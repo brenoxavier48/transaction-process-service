@@ -14,7 +14,7 @@ func TestTransaction_IsValid(t *testing.T) {
 	assert.Nil(t, transaction.IsValid())
 }
 
-func TestTransaction_AmountLimit(t *testing.T) {
+func TestTransaction_IsNotValidWithAmountGreaterThan1(t *testing.T) {
 	transaction := NewTransaction()
 	transaction.ID = "1"
 	transaction.AccountID = "1"
@@ -22,5 +22,16 @@ func TestTransaction_AmountLimit(t *testing.T) {
 	err := transaction.IsValid()
 	if assert.Error(t, err) {
 		assert.Equal(t, "you don't have enough limit for this transaction", err.Error())
+	}
+}
+
+func TestTransaction_IsNotValidWithAmountLessThan1(t *testing.T) {
+	transaction := NewTransaction()
+	transaction.ID = "1"
+	transaction.AccountID = "1"
+	transaction.Amount = 0
+	err := transaction.IsValid()
+	if assert.Error(t, err) {
+		assert.Equal(t, "the amount must be greater than 1", err.Error())
 	}
 }
