@@ -26,8 +26,27 @@ func (p *ProcessTransaction) getCreditCardFromInput(input TransactionInputDTO) (
 	return creditCard, invalidCreditCard
 }
 
+func (p *ProcessTransaction) rejectTransaction(transaction *entity.Transaction, errorType error) (TransactionOutputDTO, error) {
+	err := p.Repository.Insert(
+		transaction.ID,
+		transaction.AccountID,
+		transaction.Amount,
+		entity.REJECTED,
+		errorType.Error(),
+	)
+	if err != nil {
+		return TransactionOutputDTO{}, err
+	}
+	outPut := TransactionOutputDTO{
+		ID:           transaction.ID,
+		Status:       entity.REJECTED,
+		ErrorMessage: errorType.Error(),
+	}
+	return outPut, nil
+}
+
 func (p *ProcessTransaction) Execute(input TransactionInputDTO) (TransactionOutputDTO, error) {
-	_, invalidCreditCard := p.getCreditCardFromInput(input)
+	creditCard, invalidCreditCard := p.getCreditCardFromInput(input)
 
 	transaction := entity.NewTransaction()
 	transaction.ID = input.ID
@@ -35,37 +54,14 @@ func (p *ProcessTransaction) Execute(input TransactionInputDTO) (TransactionOutp
 	transaction.Amount = input.Amount
 
 	if invalidCreditCard != nil {
-		p.Repository.Insert(
-			transaction.ID,
-			transaction.AccountID,
-			transaction.Amount,
-			entity.REJECTED,
-			invalidCreditCard.Error(),
-		)
-		outPut := TransactionOutputDTO{
-			ID:           transaction.ID,
-			Status:       entity.REJECTED,
-			ErrorMessage: invalidCreditCard.Error(),
-		}
-		return outPut, nil
+		return p.rejectTransaction(transaction, invalidCreditCard)
 	}
 
+	transaction.SetCreditCard(*creditCard)
 	invalidTransaction := transaction.IsValid()
 
 	if invalidTransaction != nil {
-		p.Repository.Insert(
-			transaction.ID,
-			transaction.AccountID,
-			transaction.Amount,
-			entity.REJECTED,
-			invalidTransaction.Error(),
-		)
-		outPut := TransactionOutputDTO{
-			ID:           transaction.ID,
-			Status:       entity.REJECTED,
-			ErrorMessage: invalidTransaction.Error(),
-		}
-		return outPut, nil
+		return p.rejectTransaction(transaction, invalidTransaction)
 	}
 
 	return TransactionOutputDTO{}, nil
