@@ -45,6 +45,25 @@ func (p *ProcessTransaction) rejectTransaction(transaction *entity.Transaction, 
 	return outPut, nil
 }
 
+func (p *ProcessTransaction) acceptTransaction(transaction *entity.Transaction) (TransactionOutputDTO, error) {
+	err := p.Repository.Insert(
+		transaction.ID,
+		transaction.AccountID,
+		transaction.Amount,
+		entity.ACCEPTED,
+		"",
+	)
+	if err != nil {
+		return TransactionOutputDTO{}, err
+	}
+	outPut := TransactionOutputDTO{
+		ID:           transaction.ID,
+		Status:       entity.ACCEPTED,
+		ErrorMessage: "",
+	}
+	return outPut, nil
+}
+
 func (p *ProcessTransaction) Execute(input TransactionInputDTO) (TransactionOutputDTO, error) {
 	creditCard, invalidCreditCard := p.getCreditCardFromInput(input)
 
@@ -64,5 +83,5 @@ func (p *ProcessTransaction) Execute(input TransactionInputDTO) (TransactionOutp
 		return p.rejectTransaction(transaction, invalidTransaction)
 	}
 
-	return TransactionOutputDTO{}, nil
+	return p.acceptTransaction(transaction)
 }

@@ -67,3 +67,23 @@ func TestProcessTransaction_ExecuteInvalidTransaction(t *testing.T) {
 
 	assertHelper(t, invalidTransactionInput, expectedTransactionOutPut)
 }
+func TestProcessTransaction_ExecuteValidTransaction(t *testing.T) {
+	invalidTransactionInput := TransactionInputDTO{
+		ID:                        "1",
+		AccountID:                 "1",
+		CreditCardNumber:          "4193523830170205",
+		CreditCardName:            "Any_Name",
+		CreditCardExpirationMonth: 12,
+		CreditCardExpirationYear:  time.Now().Year(),
+		CreditCardCvv:             123,
+		Amount:                    100,
+	}
+
+	expectedTransactionOutPut := TransactionOutputDTO{
+		ID:           "1",
+		Status:       entity.ACCEPTED,
+		ErrorMessage: "",
+	}
+
+	assertHelper(t, invalidTransactionInput, expectedTransactionOutPut)
+}
