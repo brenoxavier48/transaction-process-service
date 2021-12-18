@@ -50,5 +50,23 @@ func (p *ProcessTransaction) Execute(input TransactionInputDTO) (TransactionOutp
 		return outPut, nil
 	}
 
+	invalidTransaction := transaction.IsValid()
+
+	if invalidTransaction != nil {
+		p.Repository.Insert(
+			transaction.ID,
+			transaction.AccountID,
+			transaction.Amount,
+			entity.REJECTED,
+			invalidTransaction.Error(),
+		)
+		outPut := TransactionOutputDTO{
+			ID:           transaction.ID,
+			Status:       entity.REJECTED,
+			ErrorMessage: invalidTransaction.Error(),
+		}
+		return outPut, nil
+	}
+
 	return TransactionOutputDTO{}, nil
 }
