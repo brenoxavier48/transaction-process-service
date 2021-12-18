@@ -15,14 +15,19 @@ func NewProcessTransaction(repository repository.TransactionRepository) *Process
 	}
 }
 
-func (p *ProcessTransaction) Execute(input TransactionInputDTO) (TransactionOutputDTO, error) {
-	_, invalidCreditCard := entity.NewCreditCard(
+func (p *ProcessTransaction) getCreditCardFromInput(input TransactionInputDTO) (*entity.CreditCard, error) {
+	creditCard, invalidCreditCard := entity.NewCreditCard(
 		input.CreditCardNumber,
 		input.CreditCardName,
 		input.CreditCardExpirationMonth,
 		input.CreditCardExpirationYear,
 		input.CreditCardCvv,
 	)
+	return creditCard, invalidCreditCard
+}
+
+func (p *ProcessTransaction) Execute(input TransactionInputDTO) (TransactionOutputDTO, error) {
+	_, invalidCreditCard := p.getCreditCardFromInput(input)
 
 	transaction := entity.NewTransaction()
 	transaction.ID = input.ID
@@ -37,11 +42,12 @@ func (p *ProcessTransaction) Execute(input TransactionInputDTO) (TransactionOutp
 			entity.REJECTED,
 			invalidCreditCard.Error(),
 		)
-		return TransactionOutputDTO{
+		outPut := TransactionOutputDTO{
 			ID:           transaction.ID,
 			Status:       entity.REJECTED,
 			ErrorMessage: invalidCreditCard.Error(),
-		}, nil
+		}
+		return outPut, nil
 	}
 
 	return TransactionOutputDTO{}, nil
