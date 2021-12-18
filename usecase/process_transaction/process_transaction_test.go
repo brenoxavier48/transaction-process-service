@@ -10,6 +10,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func assertHelper(t *testing.T, transactionInput TransactionInputDTO, transactionOutput TransactionOutputDTO) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	repositoryMock := mock_repository.NewMockTransactionRepository(ctrl)
+	repositoryMock.EXPECT().
+		Insert(transactionInput.ID, transactionInput.AccountID, transactionInput.Amount, transactionOutput.Status, transactionOutput.ErrorMessage).
+		Return(nil)
+
+	processTransaction := NewProcessTransaction(repositoryMock)
+
+	output, err := processTransaction.Execute(transactionInput)
+
+	assert.Nil(t, err)
+	assert.Equal(t, transactionOutput, output)
+}
+
 func TestProcessTransaction_ExecuteInvalidCreditCard(t *testing.T) {
 	invalidTransactionInput := TransactionInputDTO{
 		ID:                        "1",
@@ -27,19 +44,26 @@ func TestProcessTransaction_ExecuteInvalidCreditCard(t *testing.T) {
 		Status:       entity.REJECTED,
 		ErrorMessage: "invalid credit card number",
 	}
+	assertHelper(t, invalidTransactionInput, expectedTransactionOutPut)
+}
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func TestProcessTransaction_ExecuteInvalidTransaction(t *testing.T) {
+	invalidTransactionInput := TransactionInputDTO{
+		ID:                        "1",
+		AccountID:                 "1",
+		CreditCardNumber:          "4193523830170205",
+		CreditCardName:            "Any_Name",
+		CreditCardExpirationMonth: 12,
+		CreditCardExpirationYear:  time.Now().Year(),
+		CreditCardCvv:             123,
+		Amount:                    10002,
+	}
 
-	repositoryMock := mock_repository.NewMockTransactionRepository(ctrl)
-	repositoryMock.EXPECT().
-		Insert(invalidTransactionInput.ID, invalidTransactionInput.AccountID, invalidTransactionInput.Amount, expectedTransactionOutPut.Status, expectedTransactionOutPut.ErrorMessage).
-		Return(nil)
+	expectedTransactionOutPut := TransactionOutputDTO{
+		ID:           "1",
+		Status:       entity.REJECTED,
+		ErrorMessage: "you don't have enough limit for this transaction",
+	}
 
-	processTransaction := NewProcessTransaction(repositoryMock)
-
-	output, err := processTransaction.Execute(invalidTransactionInput)
-
-	assert.Nil(t, err)
-	assert.Equal(t, expectedTransactionOutPut, output)
+	assertHelper(t, invalidTransactionInput, expectedTransactionOutPut)
 }

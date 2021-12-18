@@ -52,7 +52,7 @@ func (c *CreditCard) ValidateExpirationMonth() error {
 }
 
 func (c *CreditCard) ValidateExpirationYear() error {
-	if c.expirationYear <= time.Now().Year() {
+	if c.expirationYear < time.Now().Year() {
 		return errors.New("invalid expiration year")
 	}
 	return nil
