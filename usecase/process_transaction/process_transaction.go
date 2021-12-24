@@ -3,15 +3,20 @@ package process_transaction
 import (
 	"github.com/brenoxavier48/imersaofc-gateway/domain/entity"
 	"github.com/brenoxavier48/imersaofc-gateway/domain/repository"
+	"github.com/brenoxavier48/imersaofc-gateway/infra/broker"
 )
 
 type ProcessTransaction struct {
 	Repository repository.TransactionRepository
+	Producer   broker.Producer
+	Topic      string
 }
 
-func NewProcessTransaction(repository repository.TransactionRepository) *ProcessTransaction {
+func NewProcessTransaction(repository repository.TransactionRepository, producer broker.Producer, topic string) *ProcessTransaction {
 	return &ProcessTransaction{
 		Repository: repository,
+		Producer:   producer,
+		Topic:      topic,
 	}
 }
 
@@ -42,6 +47,8 @@ func (p *ProcessTransaction) rejectTransaction(transaction *entity.Transaction, 
 		Status:       entity.REJECTED,
 		ErrorMessage: errorType.Error(),
 	}
+	p.producerPublish(outPut, []byte(transaction.ID))
+
 	return outPut, nil
 }
 
@@ -61,6 +68,8 @@ func (p *ProcessTransaction) acceptTransaction(transaction *entity.Transaction) 
 		Status:       entity.ACCEPTED,
 		ErrorMessage: "",
 	}
+	p.producerPublish(outPut, []byte(transaction.ID))
+
 	return outPut, nil
 }
 
@@ -84,4 +93,12 @@ func (p *ProcessTransaction) Execute(input TransactionInputDTO) (TransactionOutp
 	}
 
 	return p.acceptTransaction(transaction)
+}
+
+func (p *ProcessTransaction) producerPublish(output TransactionOutputDTO, key []byte) error {
+	err := p.Producer.Publish(output, key, p.Topic)
+	if err != nil {
+		return err
+	}
+	return nil
 }

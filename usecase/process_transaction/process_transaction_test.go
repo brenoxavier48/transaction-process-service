@@ -6,20 +6,30 @@ import (
 
 	"github.com/brenoxavier48/imersaofc-gateway/domain/entity"
 	mock_repository "github.com/brenoxavier48/imersaofc-gateway/domain/repository/mock"
+	mock_producer "github.com/brenoxavier48/imersaofc-gateway/infra/broker/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
-func assertHelper(t *testing.T, transactionInput TransactionInputDTO, transactionOutput TransactionOutputDTO) {
+func makeSut(t *testing.T) (ProcessTransaction, *gomock.Controller, *mock_repository.MockTransactionRepository, *mock_producer.MockProducer) {
 	ctrl := gomock.NewController(t)
+	producerMock := mock_producer.NewMockProducer(ctrl)
+	repositoryMock := mock_repository.NewMockTransactionRepository(ctrl)
+	processTransaction := NewProcessTransaction(repositoryMock, producerMock, "transactions_result")
+	return *processTransaction, ctrl, repositoryMock, producerMock
+}
+
+func assertHelper(t *testing.T, transactionInput TransactionInputDTO, transactionOutput TransactionOutputDTO) {
+	processTransaction, ctrl, repositoryMock, producerMock := makeSut(t)
 	defer ctrl.Finish()
 
-	repositoryMock := mock_repository.NewMockTransactionRepository(ctrl)
 	repositoryMock.EXPECT().
 		Insert(transactionInput.ID, transactionInput.AccountID, transactionInput.Amount, transactionOutput.Status, transactionOutput.ErrorMessage).
 		Return(nil)
 
-	processTransaction := NewProcessTransaction(repositoryMock)
+	producerMock.EXPECT().
+		Publish(transactionOutput, []byte(transactionOutput.ID), "transactions_result").
+		Return(nil)
 
 	output, err := processTransaction.Execute(transactionInput)
 
